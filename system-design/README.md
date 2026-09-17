@@ -13,3 +13,7 @@ One folder per exercise, named `<slug>/`, each containing a README that covers:
 ## Study links
 
 Curated external resources live in [links.md](links.md).
+
+## Concepts
+
+Standalone concept explainers (not full exercises) live in [concepts/](concepts/).
