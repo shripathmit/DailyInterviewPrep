@@ -9,3 +9,7 @@ One folder per exercise, named `<slug>/`, each containing a README that covers:
 5. High-level architecture
 6. Deep dives — the parts worth spending interview time on
 7. Bottlenecks, failure modes, scaling, cost, and interview traps
+
+## Study links
+
+Curated external resources live in [links.md](links.md).

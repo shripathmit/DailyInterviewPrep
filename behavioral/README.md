@@ -7,3 +7,7 @@ Each story:
 - Situation / Task / Action / Result
 - What I'd do differently next time
 - Tags for the question types it answers (leadership, conflict, failure, influence, etc.)
+
+## Study links
+
+Curated external resources live in [links.md](links.md).

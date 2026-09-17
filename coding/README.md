@@ -22,3 +22,7 @@ Create a subfolder per pattern as solutions land:
 - dynamic-programming
 - intervals
 - system-design-flavored coding (LRU cache, rate limiter, etc.)
+
+## Study links
+
+Curated external resources live in [links.md](links.md).

@@ -18,3 +18,10 @@ My interview-prep working repo: coding problems, system design exercises, behavi
 - 1 system design exercise
 - 1 behavioral story
 - Log it all in `logs/YYYY-MM-DD.md`
+## Study links
+
+Each topic folder keeps a curated list of external study resources in its `links.md`:
+
+- [system-design/links.md](system-design/links.md)
+- [coding/links.md](coding/links.md)
+- [behavioral/links.md](behavioral/links.md)
