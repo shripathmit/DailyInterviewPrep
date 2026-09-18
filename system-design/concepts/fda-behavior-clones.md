@@ -219,6 +219,23 @@ Pattern(
 )
 ```
 
+**Worked example** — analysis: *"FDA issued a warning letter to Jabil Inc., a
+large CDMO, citing aseptic processing violations."* (`change_type: warning
+letter`, product codes `[LZG]`, submission types `[510(k)]`).
+
+Scoring the three enforcement patterns:
+
+| pattern | triggers matched | coverage | × confidence | score | fires? |
+|---|---|---|---|---|---|
+| `inspection-refusal-escalation` | none | 0/5 | × 0.90 | — | no |
+| `cdmo-warning-letter-cluster` | cdmo, jabil | 2/4 = 0.50 | × 0.75 | **0.375** | **yes** |
+| `glp1-compounding-crackdown` | none | 0/5 | × 0.85 | — | no |
+
+Result: the enforcement clone reasons from `cdmo-warning-letter-cluster`
+(relevance 0.375, confidence 75%, fired on "cdmo", "jabil") and its prediction
+cites that pattern. This is the actual output of the algorithm, verified in a
+test run — deterministic, no LLM involved in retrieval.
+
 ---
 
 ## 10. Evidence-grounded prompting — pattern injection
