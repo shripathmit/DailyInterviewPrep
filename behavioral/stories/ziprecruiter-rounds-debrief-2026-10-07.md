@@ -111,6 +111,7 @@ Rounds 2 and 3, following the October 6 screen with Scott (product leader). Full
 - Shridhar gave three reasons for the move, crisply: (1) the next stage at Moderna means going deeper into biology, which is not his interest  -  he wants core technology companies where tech is the bread and butter; (2) his wife's residency (Harvard Medical) ends next year and they plan to move to Seattle, where Moderna's presence is small; (3) the MIT MBA exposed him to business/finance/product and he wants to apply it.
 - Keep the three-reason structure. It landed well ("those 3 are all good reasons").
 - The October 6 coaching still applies: "I have reached the ceiling of what computer-science knowledge alone can do in biotech" beats "getting bored," and the metrics fluency stays the differentiator.
+- 2026-10-07: Shridhar confirmed the standing job-search location rule stays as-is (any US location, no city prioritization). The planned Seattle move after his wife's residency is recorded as context, not a weighting change.
 
 ## Addendum (2026-10-07): areas of improvement + the ideal crawler design
 
