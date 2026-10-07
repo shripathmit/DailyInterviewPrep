@@ -8,7 +8,7 @@ Rounds 2 and 3, following the October 6 screen with Scott (product leader). Full
 
 **Interviewer:** Steve, engineer on the S&B (small-to-medium business) team, 5+ years at ZipRecruiter, LA area. His team owns job hosting and management flows: full-stack job management services plus underlying marketplace mechanics.
 
-**Format:** A ~200-line Go CLI program  -  a self-service IT tool for managing hardware features attached to laptops. A bug report from a user ("George"): the `update laptop features` flow throws an error in the "this doesn't work" scenario but not in the "this works" scenario. Task: reproduce, find the bug, fix it. No Go background required.
+**Format:** A ~200-line Go CLI program  -  a self-service IT tool for managing hardware features attached to laptops. A bug report from a user ("George"): the `update laptop features` flow throws an error in the "this doesn't work" scenario but not in the "this works" scenario. Task: reproduce, find the bug, fi× it. No Go background required.
 
 **How it went:**
 
@@ -27,7 +27,7 @@ Rounds 2 and 3, following the October 6 screen with Scott (product leader). Full
 
 - Needed Steve's redirect to understand it was a multi-step flow, not a single broken command; burned early minutes on the wrong laptop (M vs M2).
 - Never implemented the fix. Time went into scaffolding new helper functions instead of the minimal guard clause. In a 45-minute exercise, the working change matters more than the design of the change.
-- Asked Steve "how would you solve it" at the end  -  he declined (he administers the question often). Fair to ask, but have a tighter close ready: restate your diagnosis and fix in two sentences and stop.
+- Asked Steve "how would you solve it" at the end  -  he declined (he administers the question often). Fair to ask, but have a tighter close ready: restate your diagnosis and fi× in two sentences and stop.
 
 **The ideal fix, for the record:** in the update path, before `insertFeaturesIntoDB`, check existence of the (user, laptop, feature) row and skip the insert when present  -  or delete-then-insert the full set. A guard clause, not new functions.
 
@@ -68,7 +68,7 @@ Rounds 2 and 3, following the October 6 screen with Scott (product leader). Full
 
 **What to tighten:**
 
-- Long monologues. He caught it himself ("I went in multiple directions")  -  the fix is to pause for a breath and a check-in every 90 seconds: "does this match what you're thinking, or should I go deeper somewhere?"
+- Long monologues. He caught it himself ("I went in multiple directions")  -  the fi× is to pause for a breath and a check-in every 90 seconds: "does this match what you're thinking, or should I go deeper somewhere?"
 - Named the gaps only at the end (failure modes, training-data bias from source skew). Name them during the design: "the two things I haven't covered are failure handling and bias  -  want me to take one?"
 - Less whiteboard fiddling (colors, arrows); the boxes matter less than the decisions between them.
 
@@ -111,5 +111,36 @@ Rounds 2 and 3, following the October 6 screen with Scott (product leader). Full
 - Shridhar gave three reasons for the move, crisply: (1) the next stage at Moderna means going deeper into biology, which is not his interest  -  he wants core technology companies where tech is the bread and butter; (2) his wife's residency (Harvard Medical) ends next year and they plan to move to Seattle, where Moderna's presence is small; (3) the MIT MBA exposed him to business/finance/product and he wants to apply it.
 - Keep the three-reason structure. It landed well ("those 3 are all good reasons").
 - The October 6 coaching still applies: "I have reached the ceiling of what computer-science knowledge alone can do in biotech" beats "getting bored," and the metrics fluency stays the differentiator.
+
+## Addendum (2026-10-07): areas of improvement + the ideal crawler design
+
+### Areas of improvement from the Yifan round
+
+1. **Monologue length.** Several stretches ran minutes without a check-in ("I went in multiple directions" - his own words). Fix: pause roughly every 90 seconds - "does this match what you're thinking, or should I go deeper somewhere?"
+2. **Failure modes and training-data bias surfaced only in the last two minutes.** Name them during the design: "two things I haven't covered are failure handling and source-skew bias - want me to take one?"
+3. **The crawler was the weakest subsystem.** Politeness, change detection, and dedup-at-the-edge were hand-wavy; fetch and parse were coupled with no replay story. Reworked below.
+4. **Whiteboard mechanics over decisions.** Time went to colors and arrow directions; the decisions between the boxes matter more than the boxes.
+
+### Ideal solution: the crawler subsystem, done properly
+
+**Requirements, stated up front.** The crawler is a fetch-only tier: raw bytes plus fetch metadata into immutable storage. Parsing, extraction, and normalization happen downstream. One-day staleness is acceptable. Hard constraints: never violate a domain's politeness budget (robots.txt, crawl-delay, 429 handling), never fetch the same URL twice concurrently, never re-download what hasn't changed.
+
+**Architecture.**
+
+1. **Source config store** (per source: seed URLs, sitemap URLs, robots rules, crawl budget, trust tier, expected change rate). This part of the in-round design was right; keep it.
+2. **Frontier.** A priority queue of URLs to fetch. Priority = source trust × business value × staleness × expected change rate. Sharded per domain so one slow domain never blocks the rest; per-domain token buckets enforce crawl-delay and concurrent-connection caps.
+3. **Fetcher fleet.** Stateless, horizontally scaled workers. Every request is a conditional GET (ETag / If-Modified-Since): an unchanged page costs a 304, not a download. robots.txt cached per domain with a TTL; crawl-delay honored; 429/503 responses honor Retry-After. Timeouts with exponential backoff; a per-domain circuit breaker trips after sustained failures and routes to a dead-letter queue with alerting. The user-agent identifies the crawler with a contact address.
+4. **Seen-URL set.** A Bloom filter sized for ~20M URLs/day: at 1% false-positive rate that's about 24MB and 7 hash functions - small enough to hold in memory. The tradeoff to state out loud: a false positive means skipping a genuinely new URL. Mitigation: sitemap-driven discovery catches it the next day, or rebuild a counting Bloom daily. Say the tradeoff; don't hide it.
+5. **Change detection at the edge.** Simhash the extracted text (64-bit fingerprints over shingles); Hamming distance of 3 or less means boilerplate churn, not a real change. Only meaningfully-changed documents flow to the unification plane. This moves the 20M-to-500K funnel to the edge, before paying for parsing.
+6. **Raw store.** S3, content-addressed (key = content hash). Identical bytes fetched twice store once: free dedup at the storage layer. Immutability is the replay story - when the parser has a bug, re-parse from S3; never re-crawl.
+7. **Sitemap-first discovery.** Where a source publishes a sitemap, diff yesterday's `<urlset>` against today's using `<lastmod>` instead of crawling listing pages. This formalizes the "hash from yesterday" idea from the round and is an order of magnitude cheaper than brute-force crawling.
+8. **XML job feeds: separate fast path.** Already structured: validate against the schema, straight into the queue. No crawler involved.
+9. **Adaptive scheduling (the elegant touch).** Estimate each URL's change rate as a Poisson process from its history; set the re-crawl interval proportional to 1/lambda. Fast-changing postings get crawled often, stable ones rarely - the schedule learns instead of being fixed.
+
+**Scale math (say it in the room).** 20M fetches/day is ~230/sec average, ~700/sec at 3× peak. At ~50KB per page that's roughly 1TB/day of raw ingress - but conditional GETs, simhash filtering, and content-addressed storage mean only changed documents persist downstream. At ~2 seconds per fetch under politeness limits, peak needs ~1,400 concurrent fetch slots: about 15-20 modest workers. Small fleet; the complexity is in scheduling, not metal.
+
+**Failure handling (the self-flagged gap, closed).** Domain down: circuit breaker, backoff, DLQ, alert on sustained failure. Poison URLs (calendar traps, session-ID explosions): URL canonicalization plus per-domain URL-count caps. Parser bug: immutable raw store, re-parse without re-crawling. Stale robots.txt: refresh on TTL, fail closed (don't crawl) when refresh fails. Frontier depth is the autoscaling signal for the fetcher fleet.
+
+**The 30-second talk track.** "The crawler is fetch-only; parsing is downstream and replayable. Discovery is sitemap-first, crawling second. Conditional GETs and simhash at the edge move the 20M-to-500K funnel before we pay for parsing. Per-domain politeness budgets and circuit breakers keep us unblocked and a good citizen. Scheduling adapts to each page's observed change rate."
 
 *Transcription artifacts corrected while scrubbing: "Shredder" = Shridhar, "commuter science" = computer science, "Steve"/"Yifan" as heard.*
