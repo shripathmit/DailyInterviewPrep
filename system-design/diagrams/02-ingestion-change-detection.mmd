@@ -1,0 +1,26 @@
+%% 02 - Ingestion and change detection flow
+flowchart TD
+    START(["Scheduled tick<br/>EventBridge"])
+    CURSOR[("Cursor table<br/>DynamoDB / Postgres")]
+    BUCKET["Token bucket<br/>refills at allowed API rate"]
+    META["Fetch metadata only<br/>hash, etag, last modified"]
+    CMP{"Hash changed<br/>vs last_seen_hash?"}
+    SKIP["Skip document<br/>no write, no event"]
+    STREAM["Stream bytes to S3<br/>key = doc ID + version ts"]
+    S3V[("S3 versioned bucket<br/>old versions kept")]
+    MAN["Write manifest<br/>content hash, source, time"]
+    EVT["S3 event to SQS<br/>one event per write"]
+    PARK["Parser picks up message<br/>idempotent by doc ID + version"]
+
+    START --> CURSOR
+    CURSOR --> BUCKET
+    BUCKET -->|"token available"| META
+    BUCKET -.->|"bucket empty: wait"| BUCKET
+    META --> CMP
+    CMP -->|"no"| SKIP
+    CMP -->|"yes"| STREAM
+    STREAM --> S3V
+    STREAM --> MAN
+    S3V --> EVT
+    EVT --> PARK
+    MAN -->|"update cursor row"| CURSOR

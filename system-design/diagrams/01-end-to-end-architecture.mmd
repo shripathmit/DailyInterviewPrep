@@ -1,0 +1,51 @@
+%% 01 - End-to-end architecture (top-down)
+flowchart TD
+    subgraph SRC["1. Source"]
+        SAAS["Enterprise SaaS<br/>documents, API rate limit"]
+    end
+    subgraph ING["2. Ingestion"]
+        FETCH["Fetcher service<br/>token bucket, cursor table"]
+        S3[("S3 raw bucket<br/>versioning on")]
+        SQS["SQS work queue"]
+        MAN[("Manifest<br/>DynamoDB")]
+    end
+    subgraph PARSE["3. Parsing and chunking"]
+        WORKER["Parser workers<br/>virus scan, format detect"]
+        LAYOUT["Layout model<br/>reading order, tables, figures"]
+        CHUNK["Chunker<br/>layout aware, 20 pct overlap"]
+    end
+    subgraph INDEX["4. Indexing"]
+        EMB["Embedder<br/>encoder model, SageMaker"]
+        VEC[("Vector store<br/>OpenSearch Serverless, HNSW")]
+        GRAPH[("Graph store<br/>Neptune, entities and relations")]
+    end
+    subgraph QA["5. Q and A layer"]
+        USER(["User query"])
+        HYB["Hybrid retrieval<br/>vector search + keyword search"]
+        LLM["Answer model<br/>Bedrock, cited answers"]
+    end
+    subgraph EVAL["6. Evaluation and monitoring"]
+        EVALJOB["Eval jobs<br/>Step Functions, golden sets"]
+        CW["CloudWatch<br/>metrics, alarms, dashboard"]
+    end
+
+    SAAS -->|"metadata walk, hash compare"| FETCH
+    FETCH -->|"changed bytes only,<br/>doc ID + version ts"| S3
+    FETCH -->|"manifest write"| MAN
+    S3 -->|"S3 event"| SQS
+    SQS --> WORKER
+    WORKER -->|"manifest read"| MAN
+    WORKER --> LAYOUT
+    LAYOUT -->|"text, tables, page + bbox"| CHUNK
+    CHUNK -->|"chunks + metadata"| EMB
+    EMB -->|"vectors + payload"| VEC
+    CHUNK -->|"entities, relations"| GRAPH
+    USER -->|"query"| HYB
+    HYB -->|"top chunks by meaning"| VEC
+    HYB -->|"keyword top-k"| VEC
+    GRAPH -.->|"entity links"| HYB
+    HYB -->|"blended context"| LLM
+    EVALJOB -->|"scores"| CW
+    WORKER -.->|"logs"| CW
+    VEC -.->|"recall, freshness"| CW
+    LLM -.->|"faithfulness"| CW

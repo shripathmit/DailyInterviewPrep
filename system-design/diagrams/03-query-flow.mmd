@@ -1,0 +1,27 @@
+%% 03 - Query flow (hybrid retrieval)
+flowchart TD
+    USER(["User types query"])
+    EMBQ["Embed query<br/>encoder model"]
+    KW["Keyword search<br/>exact terms, names, IDs"]
+    VEC[("Vector store<br/>ANN: HNSW / IVF")]
+    VTOP["Vector top-k<br/>meaning matches + scores"]
+    KTOP["Keyword top-k<br/>text relevance scores"]
+    NORM["Normalize scores<br/>different scales, one range"]
+    BLEND["Blend and merge<br/>weighted, dedupe"]
+    CTX["Blended context window<br/>chunks + metadata + sources"]
+    LLM["Answer model<br/>Bedrock"]
+    ANS(["Cited answer<br/>chunk, page, doc version, S3 key"])
+    LOG[("Retrieval path log<br/>which path found each chunk")]
+
+    USER --> EMBQ
+    USER --> KW
+    EMBQ --> VEC
+    VEC --> VTOP
+    KW --> KTOP
+    VTOP --> NORM
+    KTOP --> NORM
+    NORM --> BLEND
+    BLEND --> CTX
+    CTX --> LLM
+    LLM --> ANS
+    BLEND -.-> LOG

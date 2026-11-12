@@ -1,0 +1,38 @@
+%% 04 - Evaluation loop per stage
+flowchart LR
+    subgraph STAGES["Pipeline stages"]
+        direction TB
+        ING["1. Ingestion"]
+        PAR["2. Parsing"]
+        CHK["3. Chunking and<br/>embeddings"]
+        RET["4. Retrieval"]
+        ANS["5. Answer"]
+    end
+    subgraph METRICS["What is measured"]
+        direction TB
+        M1["Fetch success rate<br/>hash detection<br/>S3 vs manifest match<br/>alert below 99 pct"]
+        M2["Golden set: 10 PDFs<br/>text overlap<br/>table cell accuracy<br/>page + bbox present"]
+        M3["Sentence boundaries<br/>overlap coverage<br/>near-dup cosine sim<br/>embedding stability"]
+        M4["Labeled question set<br/>recall at 5 and 10<br/>vector, keyword, hybrid<br/>mean reciprocal rank"]
+        M5["Faithfulness to chunks<br/>citation accuracy<br/>claim to chunk mapping<br/>5 pct human sample, 1 to 5"]
+    end
+    subgraph LOOP["The loop"]
+        direction TB
+        RUN["Scheduled eval runs<br/>Step Functions"]
+        DASH["CloudWatch dashboard<br/>custom metrics, alarms"]
+        ACT["Act on regressions<br/>retune, re-embed, fix"]
+    end
+
+    ING --> M1
+    PAR --> M2
+    CHK --> M3
+    RET --> M4
+    ANS --> M5
+    M1 --> RUN
+    M2 --> RUN
+    M3 --> RUN
+    M4 --> RUN
+    M5 --> RUN
+    RUN --> DASH
+    DASH --> ACT
+    ACT -.->|"feed back into<br/>pipeline stages"| STAGES
